@@ -7,9 +7,9 @@ mutable struct CCMatrix
     nz::UInt128
 end
 
-function makeCCSparseFromFile(x::String)
+function makeCCSparseFromFile(path::String)
 
-    data = readdlm("email-Enron.txt",Int128, header=false, skipblanks=true, comments=true, comment_char='#')##the filename will be changed to x afterwards
+    data = readdlm(path,Int128, header=false, skipblanks=true, comments=true, comment_char='#')##the filename will be changed to x afterwards
     data = reshape(data',1,length(data)) ##all data is on a line 
     p = Array{Int128}(undef,length(data))
     t = Array{Int8}(undef,length(data))
