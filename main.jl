@@ -137,3 +137,21 @@ function Substitution(A, B, X)
         end
     end
 end
+
+function lineSubstraction(A, pivot, column, line)
+    i::UInt = 1
+    mul = A.x[A.p[column]]
+    while i <= lastindex(A_i)
+        if A.i[i] == lineS
+            A.x[i] += mul * A.x[A.p[column]]
+            if A.x[i] == 0
+                deleteat!(A.i, i)
+                deleteat!(A.x, i)
+            end
+        elseif A.i[i] != A.i[A.p[column]] #if the element is not in the column we want to put to 0
+            newVal = mul * A.x[A.p[column]]
+            insert!(A.x, i, newVal)
+            insert!(A.i, i, lineS);
+        i += 1
+    end
+end
