@@ -85,4 +85,7 @@ function permColumn!(sparseMatrix, sparseArray, column1, column2)
         sparseMatrix.p[k] +=j
         k += 1
     end
+    j = sparseX[column1]
+    sparseX[column1] = sparseX[column2]
+    sparseX[column2] = j
 end
