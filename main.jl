@@ -39,53 +39,101 @@ function makeCCArray(path)
     return sparseArray
 end
 
-function permColumn!(sparseMatrix, sparseArray, column1, column2)
+function permColumn!(A, X, column1, column2)
     #remove the value from struct and put them into temporal array
-    j::UInt8 = sparseMatrix.p[column1]
-    k::UInt8 = sparseMatrix.p[column1 + 1]
-    iTmp1::Array{UInt128} = sparseMatrix.i[j:k-1]
-    xTmp1::Array{Int8} = sparseMatrix.x[j:k-1]
+    j::UInt = A.p[column1]
+    k::UInt = A.p[column1 + 1]
+    if column1 == lastindex(A.p)
+        k += 1
+    end
+    iTmp1::Array{UInt128} = A.i[j:k-1]
+    xTmp1::Array{Int8} = A.x[j:k-1]
     while j < k
-        deleteat!(sparseMatrix.i, j)
-        deleteat!(sparseMatrix.x, j)
+        deleteat!(A.i, j)
+        deleteat!(A.x, j)
         j += 1
     end
-    j = sparseMatrix.p[column2]
-    k = sparseMatrix.p[column2 + 1]
-    iTmp2::Array{UInt128} = sparseMatrix.i[j:k-1]
-    xTmp2::Array{Int8} = sparseMatrix.x[j:k-1]
+    j = A.p[column2]
+    k = A.p[column2 + 1]
+    if column2 == lastindex(A.p)
+        k += 1
+    end
+    iTmp2::Array{UInt128} = A.i[j:k-1]
+    xTmp2::Array{Int8} = A.x[j:k-1]
     while j < k
-        deleteat!(sparseMatrix.i, j)
-        deleteat!(sparseMatrix.x, j)
+        deleteat!(A.i, j)
+        deleteat!(A.x, j)
         j += 1
     end
     #insert value at their new place
-    j = sparseMatrix.p[column2]
-    while j < sparseMatrix.p[column1]
-        insert!(sparseMatrix.i, iTmp1[j])
-        insert!(sparseMatrix.x, xTmp1[j])
+    j = A.p[column2]
+    i = column2
+    k = 1
+    while i < column2 + 1
+        insert!(A.i, j, iTmp1[k])
+        insert!(A.x, j, xTmp1[K])
         j += 1
+        k += 1
+        i += 1
     end
-    j = sparseMatrix.p[column1]
-    while j < sparseMatrix.p[column2]
-        insert!(sparseMatrix.i, iTmp2[j])
-        insert!(sparseMatrix.x, xTmp2[j])
+    j = A.p[column1]
+    i = column1
+    k = 1
+    while i < column2 + 1
+        insert!(A.i, j, iTmp2[k])
+        insert!(A.x, j, xTmp2[k])
         j += 1
+        k += 1
+        i += 1
     end
     #update p
-    j = sparseMatrix.p[column1 + 1] - sparseMatrix.p[column1]
-    k = sparseMatrix.p[column1 + 1]
-    while k < sparseMatrix.p[column2]
-        sparseMatrix.p[k] +=j
+    j = A.p[column1 + 1] - A.p[column1]
+    k = column1 + 1
+    while k < column2
+        A.p[k] += j
         k += 1
     end
-    j = sparseMatrix.p[column2 + 1] - sparseMatrix.p[column2]
-    k = sparseMatrix.p[column2 + 1]
-    while k < sparseMatrix.p[column2]
-        sparseMatrix.p[k] +=j
+    j = A.p[column2 + 1] - A.p[column2]
+    k = column2 + 1
+    while k < lastindex(A.p)
+        A.p[k] += j
         k += 1
     end
-    j = sparseX[column1]
-    sparseX[column1] = sparseX[column2]
-    sparseX[column2] = j
+    j = X[column1]
+    X[column1] = X[column2]
+    X[column2] = j
+end
+
+function Substitution(A, B, X)
+    if A.i[1] == 1
+        if B.i[1] == 1
+            X[1] = B.x[1] / A.x[1]
+        end
+    end
+    else
+        X[1] = 0
+    end
+    line::UInt = 2
+    over::UInt = B.i[length(B.i)]
+    a::Int = 0
+    b::Int = 0
+    while line <= over
+        if A.x[line] == 0
+            X[line] = 0
+            line += 1
+        end
+        else
+            for k::UInt=1:line-1
+                if A.i[k] == line
+                    a += A.x[k] + X[k]
+                end
+            end
+            if B.i[line] == line
+                b = B.x[line]
+            end
+            b -= a
+            X[line] = b/A.x[line]
+            line ++
+        end
+    end
 end
