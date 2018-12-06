@@ -7,9 +7,15 @@ mutable struct CCMatrix
     nz::UInt128
 end
 
-function makeCCSparseFromFile(path::String)
+mutable struct CCArray
+    i::Array{UInt128}
+    x::Array{Int8}
+    nz::UInt128
+end
 
-    data = readdlm(path,Int128, header=false, skipblanks=true, comments=true, comment_char='#')##the filename will be changed to x afterwards
+function makeCCSparseFromFile(x::String)
+
+    data = readdlm("email-Enron.txt",Int128, header=false, skipblanks=true, comments=true, comment_char='#')##the filename will be changed to x afterwards
     data = reshape(data',1,length(data)) ##all data is on a line 
     p = Array{Int128}(undef,length(data))
     t = Array{Int8}(undef,length(data))
@@ -25,9 +31,10 @@ function makeCCSparseFromFile(path::String)
     return sparseMatrix
 end
 
-function ReadArray(path)
-    using DelimitedFiles
-    Array = readdlm(path, comments=true, comment_char='#')
-    Array_i = Array[:, 1]
-    Array_v = Array[:, 2]
+function makeCCArray(path)
+    data = readdlm(path, comments=true, comment_char='#')
+    i= Array[:, 1]
+    x = Array[:, 2]
+    sparseArray = CCArray(i, x, length(data))
+    return sparseArray
 end
