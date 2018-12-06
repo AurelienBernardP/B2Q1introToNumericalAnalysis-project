@@ -38,3 +38,51 @@ function makeCCArray(path)
     sparseArray = CCArray(i, x, length(data))
     return sparseArray
 end
+
+function permColumn!(sparseMatrix, sparseArray, column1, column2)
+    #remove the value from struct and put them into temporal array
+    j::UInt8 = sparseMatrix.p[column1]
+    k::UInt8 = sparseMatrix.p[column1 + 1]
+    iTmp1::Array{UInt128} = sparseMatrix.i[j:k-1]
+    xTmp1::Array{Int8} = sparseMatrix.x[j:k-1]
+    while j < k
+        deleteat!(sparseMatrix.i, j)
+        deleteat!(sparseMatrix.x, j)
+        j += 1
+    end
+    j = sparseMatrix.p[column2]
+    k = sparseMatrix.p[column2 + 1]
+    iTmp2::Array{UInt128} = sparseMatrix.i[j:k-1]
+    xTmp2::Array{Int8} = sparseMatrix.x[j:k-1]
+    while j < k
+        deleteat!(sparseMatrix.i, j)
+        deleteat!(sparseMatrix.x, j)
+        j += 1
+    end
+    #insert value at their new place
+    j = sparseMatrix.p[column2]
+    while j < sparseMatrix.p[column1]
+        insert!(sparseMatrix.i, iTmp1[j])
+        insert!(sparseMatrix.x, xTmp1[j])
+        j += 1
+    end
+    j = sparseMatrix.p[column1]
+    while j < sparseMatrix.p[column2]
+        insert!(sparseMatrix.i, iTmp2[j])
+        insert!(sparseMatrix.x, xTmp2[j])
+        j += 1
+    end
+    #update p
+    j = sparseMatrix.p[column1 + 1] - sparseMatrix.p[column1]
+    k = sparseMatrix.p[column1 + 1]
+    while k < sparseMatrix.p[column2]
+        sparseMatrix.p[k] +=j
+        k += 1
+    end
+    j = sparseMatrix.p[column2 + 1] - sparseMatrix.p[column2]
+    k = sparseMatrix.p[column2 + 1]
+    while k < sparseMatrix.p[column2]
+        sparseMatrix.p[k] +=j
+        k += 1
+    end
+end
