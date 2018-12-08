@@ -138,20 +138,65 @@ function Substitution(A, B, X)
     end
 end
 
-function lineSubstraction(A, pivot, column, line)
-    i::UInt = 1
-    mul = A.x[A.p[column]]
-    while i <= lastindex(A_i)
-        if A.i[i] == lineS
-            A.x[i] += mul * A.x[A.p[column]]
+function lineSubstraction!(A, pivot, column, line)
+    a::UInt = A.p[column] #start at the pivot's column
+    mul::Int = A.x[A.p[column]]/pivot
+    b::Uint
+    nbrLines = maximum(A.i)
+    if column == lastindex(A.p)
+        b = A.nz + 1
+    else
+        b = A.p[column+1]
+    end
+    gap::Uint = b-a
+    if (a+1 < b) && (A.i[a+1] != lineS)
+        #the first non zero element of the line should be under the pivot
+        #if not, we do nothing 
+        return
+    end
+    i::Uint = column
+    currentColumn::UInt = column
+    j::Uint
+    while i <= A.p[lastindex(A_p)]
+        if (A.i[i] == lineS) && (A.[i - lineS + 1] == lineS) #both line are not empty
+            A.x[i] += mul * A.[i - lineS + 1] # value in the pivot's line in the current column
             if A.x[i] == 0
                 deleteat!(A.i, i)
                 deleteat!(A.x, i)
+                #update p and nz
+                for k::Uint=currentColumn+1:lastindex(A_p)
+                    A.p[k] -= 1
+                end
+                A.nz -= 1
             end
-        elseif A.i[i] != A.i[A.p[column]] #if the element is not in the column we want to put to 0
-            newVal = mul * A.x[A.p[column]]
+
+        elseif (A.i[i] != lineS) && (A.[i - lineS + 1] == lineS) #modified line is empty
+            newVal = mul * A.[i - lineS + 1]
             insert!(A.x, i, newVal)
             insert!(A.i, i, lineS);
+            #update p and nz
+            for k::Uint=currentColumn+1:lastindex(A_p)
+                A.p[k] += 1
+            end
+                A.nz += 1
+
+        #if pivot's line is empty, we do nothing
+        end
         i += 1
+        if (A.p[i] == currentColumn + 1) && (currentColumn < lastindex(A.p))
+            currentColumn += 1
+        end
+    end
+    #update B
+    i = 0
+    j = 0
+    i = findfirst(isequal(lineS), B.i)
+    j = findfirst(isequal(line), B.i)
+    if i && j
+        B.x[i] += mul * B.x[j]
+    elseif !i && j
+        insert!(B.i, i)
+        insert!(B.x,  mul * B.x[j])
+        B.nz += 1
     end
 end
