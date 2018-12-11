@@ -241,64 +241,68 @@ module MatrixAG
     #
     #########################################################
     function lineSubstraction!(A::CCMatrix, B::CCMatrix, pivot::Int128, column, line, linesub, nblines::UInt128)
-        a::UInt = A.p[column] #start at the pivot's column
         if pivot == 0
             return -1
         end
-        mul::Int = convert(Int128, A.x[A.p[column]]/pivot)
-        b::UInt = A.nz
-        if column != lastindex(A.p)
-            b = A.p[column+1]
-        end
-        gap::UInt = b-a
-        if (a+1 < b) && (A.i[a+1] != linesub)
-            #the first non zero element of the line should be under the pivot
-            #if not, we do nothing 
-            return
-        end
-        i::UInt = column
-        currentColumn::UInt = column
-        j::UInt
-        while i <= A.p[lastindex(A_p)]
-            if (A.i[i] == linesub) && (A.i[i - linesub + 1] == linesub) #both line are not empty
-                A.x[i] += mul * A.i[i - linesub + 1] # value in the pivot's line in the current column
-                if A.x[i] == 0
-                    deleteat!(A.i, i)
-                    deleteat!(A.x, i)
-                    #update p and nz
-                    for k::UInt=currentColumn+1:lastindex(A_p)
-                        A.p[k] -= 1
+        mul::Int128 = convert(Int128, A.x[A.p[column]]/pivot)
+        i::Int128 = A.p[column] 
+        LastColumn::Int128 = 0
+        j::Int128 = 1
+        k::Int128 = 1
+        while i < lastindex(A.p)
+                k = A.i[A.p[i]]
+                if i + 1 == lastindex(A.p)
+                    LastColumn = 1
+                end
+                while (A.i[k] != linesub) && (k - LastColumn < A.p[i+1])
+                    k += 1 # find if column i has a non zero element in linesub 
+                end
+
+                if k - LastColumn == A.p[i+1] # 0 in linesub
+                    j = A.i[A.p[i]]
+                else
+                    j = A.i[k] # not 0 in line sub, element in line come after in the sparse structure                                                            
+                end
+
+                while (A.i[j] != line) && (j - LastColumn < A.p[i+1])
+                    j += 1 # find if column i has a non zero element in line
+                end
+
+                if (A.i[j] == line) && (A.i[k] == linesub) #both line in column i are not empty
+                    A.x[k] += mul * A.i[j]
+                    if A.x[k] == 0
+                        deleteat!(A.i, k)
+                        deleteat!(A.x, k)
+                        #update p and nz
+                        for k::UInt=currentColumn+1:lastindex(A_p)
+                            A.p[k] -= 1
+                        end
+                        A.nz -= 1
                     end
-                    A.nz -= 1
                 end
-
-            elseif (A.i[i] != linesub) && (A.i[i - linesub + 1] == linesub) #modified line is empty
-                newVal = mul * A.i[i - linesub + 1]
-                insert!(A.x, i, newVal)
-                insert!(A.i, i, linesub);
-                #update p and nz
-                for k::Unt=currentColumn+1:lastindex(A_p)
-                    A.p[k] += 1
-                end
+                if (A.i[j] == line) && (k - LastColumn == A.p[i+1]) #column i has a 0 element in linesub
+                    newVal = mul * A.i[j]
+                    insert!(A.x, k, newVal)
+                    insert!(A.i, k, linesub)
+                    #update p and nz
+                    for k::Unt=currentColumn+1:lastindex(A.p)
+                        A.p[k] += 1
+                    end
                     A.nz += 1
-
-            #if pivot's line is empty, we do nothing
-            end
+                # if column i has a 0 element in line, we do nothing
+                end
             i += 1
-            if (A.p[i] == currentColumn + 1) && (currentColumn < lastindex(A.p))
-                currentColumn += 1
-            end
         end
         #update B
-        i = 0
-        j = 0
-        i = findfirst(isequal(linesub), B.i)
-        j = findfirst(isequal(line), B.i)
-        if i && j
-            B.x[i] += mul * B.x[j]
-        elseif !i && j
-            insert!(B.i, i)
-            insert!(B.x,  mul * B.x[j])
+        
+        d = findfirst(isequal(linesub), B.i)
+        f = findfirst(isequal(line), B.i)
+
+        if (d != nothing) && (f != nothing)
+            B.x[d] += mul * B.x[f]
+        elseif (d == nothing) && (f != nothing)
+            insert!(B.i, d)
+            insert!(B.x,  mul * B.x[f])
             B.nz += 1
         end
     end
@@ -464,15 +468,18 @@ module MatrixAG
     ####################################################
     function makeZeroColumn!(A:: CCMatrix,X::CCMatrix,B::CCMatrix, pivot::PivotTupple, nblines::UInt128)
         n = A.p[pivot.c]
-        linesToEliminate = Array{Int128}(undef, 0)
-        while n < A.p[pivot.c + 1 ]
+        linesToEliminate = Int128[]
+        while n < A.p[pivot.c + 1]
             if (A.i[n] < pivot.l)
-                insert!(linesToEliminate, length(linesToEliminate),A.i[n])
+                push!(linesToEliminate, A.i[n])
             end
             n += 1
         end
+      #  if length(linesToEliminate) != 0 && length(linesToEliminate) != 1
+      #      println(length(linesToEliminate))
+      #  end
         for i in 1:length(linesToEliminate)
-            lineSubstraction!(A, B, pivot.val, pivot.c, pivot.l, linesToEliminate[n], nblines)
+            lineSubstraction!(A, B, pivot.val, pivot.c, pivot.l, linesToEliminate[i], nblines)
         end
     end
 
@@ -496,23 +503,25 @@ module MatrixAG
         end
         nbEmptyColumns = 0
         i = nblines
-
-        while i >= 2 && ((length(A.p)-1) - nbEmptyColumns) > nblines
+        if ((length(A.p)-1) - nbEmptyColumns) < nblines
+           println("too many empty columns")
+        end
+        while i >= 2 && (((length(A.p)-1) - nbEmptyColumns) > nblines)
             pivot = PivotTupple(i, i, 0)
             pivot.val = pivotValue(A,pivot)
 
             case = 0
             if pivot.val == 0
                 case = changePivot!(A, X, B, pivot, nbEmptyColumns)
-                pivot.val = pivotValue(A,pivot)##### oivot value is not necesary we already update it in changePivot!()
+                pivot.val = pivotValue(A,pivot)##### pivot value is not necesary we already update it in changePivot!()
             end
             if case == -1 ##column is already eliminated
                 i -= 1
                 continue
             end
-
             makeZeroColumn!(A,X,B,pivot, nblines)
             i -= 1
+            print
         end
         return
     end
@@ -540,9 +549,10 @@ module MatrixAG
     #    println("*****before elimination*****")
     #    println(A)
     #    println(B)
-    #    println("****before elimination*****")                
+    #    println("****before elimination*****") 
+        isTriag(A, 0)
         GaussElimination!(A, X, B, nblines)
-        isTriag(A)
+        isTriag(A, 0)
         for i in 1:length(A.x)
             if A.x[i] == 0
                 println("hi! I am a zero and I shouldn't be here")
@@ -553,28 +563,28 @@ module MatrixAG
         return X
     end
 
-    function isTriag(A::CCMatrix)
+    function isTriag(A::CCMatrix, print)
         nblines::Int128 = maximum(A.i)
-
+        counter = 0
         for i in 1:nblines
             for j in A.p[i]:A.p[i+1]
                 if A.i[j] < i
-                    println("I am not triangularized")
+                    counter +=1
+                end
+                if A.x[j] == 0
+                    println("hi! I am a zero and I shouldn't be here")
+                end
+                if print == 1
+                    print("  line =", A.i[j])
+                    print("  Column =", i)
+                    print("  Value =", A.x[j])
+                    print("\n")
                 end
             end
         end
-    end
-
-    function printMatrix(A::CCMatrix)
-        nblines::Int128 = maximum(A.i)
-        Matrix = zeros(nblines, nblines)
-
-        for n in 1:length(A.p)-1
-            for k in 0:A.p[n+1]-A.p[n]
-                Matrix[n][A.i[A.p[n]+k]] = convert(Float64,A.x[A.p[n]+k])
-            end
-        end
-        return Matrix
+        println("#########################")
+        println(counter)
+        println("#########################")
     end
 
 end
