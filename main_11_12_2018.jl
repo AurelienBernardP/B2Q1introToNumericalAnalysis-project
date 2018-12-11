@@ -41,8 +41,8 @@ module MatrixAG
         end
 
         sparseMatrix = CCMatrix(p,data,t,length(data))
-        sparseMatrix.i = vec(sparseMatrix.i)'
-        sparseMatrix.x = vec(sparseMatrix.x)'
+        sparseMatrix.i = vec(sparseMatrix.i)
+        sparseMatrix.x = vec(sparseMatrix.x)
         return sparseMatrix
     end
 
@@ -53,7 +53,7 @@ module MatrixAG
             i[n] += 1
         end
         x = data[:, 2]
-        p = [1 length(x)]
+        p = [1, length(x)]
         sparseArray = CCMatrix(p, i, x, length(data))
         return sparseArray
     end
@@ -464,11 +464,15 @@ module MatrixAG
     ####################################################
     function makeZeroColumn!(A:: CCMatrix,X::CCMatrix,B::CCMatrix, pivot::PivotTupple, nblines::UInt128)
         n = A.p[pivot.c]
+        linesToEliminate = Array{Int128}(undef, 0)
         while n < A.p[pivot.c + 1 ]
             if (A.i[n] < pivot.l)
-                lineSubstraction!(A, B, pivot.val, pivot.c, pivot.l, A.i[n], nblines)
+                insert!(linesToEliminate, length(linesToEliminate),A.i[n])
             end
             n += 1
+        end
+        for i in 1:length(linesToEliminate)
+            lineSubstraction!(A, B, pivot.val, pivot.c, pivot.l, linesToEliminate[n], nblines)
         end
     end
 
@@ -485,7 +489,7 @@ module MatrixAG
     #       Gauss elimination has been completed and the matrix A X and B have been modified acordingly
     #
     ####################################################
-    function GaussElimination!(A:: CCMatrix, X::CCMatrix, B::CCMatrix, nblines::UInt128)
+    function GaussElimination!(A::CCMatrix, X::CCMatrix, B::CCMatrix, nblines::UInt128)
         if length(A.p) <= 1
             #println("The input matrix is too small or indequately initialized")
             return
@@ -506,8 +510,8 @@ module MatrixAG
                 i -= 1
                 continue
             end
-            makeZeroColumn!(A,X,B,pivot, nblines)
 
+            makeZeroColumn!(A,X,B,pivot, nblines)
             i -= 1
         end
         return
@@ -559,8 +563,6 @@ module MatrixAG
                 end
             end
         end
-        
-        
     end
 
     function printMatrix(A::CCMatrix)
