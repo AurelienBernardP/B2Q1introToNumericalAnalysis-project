@@ -331,7 +331,11 @@ module MatrixAG
                 for j::Int=1:A.p[p]-1 #case last column?
                     if A.i[j] == line
                         a += A.x[j] * X.x[i]
+                        # j see each non null element of matrix, i is the current column
                         i += 1
+                    elseif j == A.p[i+1]
+                        i += 1
+                        #element in column i is null at line line. j is at the first non null element in the next column
                     end
                 end
                 b = 0
