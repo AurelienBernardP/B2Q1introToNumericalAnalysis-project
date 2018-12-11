@@ -328,7 +328,7 @@ module MatrixAG
             if A.i[A.p[p]] == line
                 i = 1
                 #going column by column
-                for j::Int=1:A.p[p+1]-1 #case last column?
+                for j::Int=1:A.p[p]-1 #case last column?
                     if A.i[j] == line
                         a += A.x[j] * X.x[i]
                         i += 1
@@ -340,10 +340,10 @@ module MatrixAG
                     b = B.x[lineInB]
                     lineInB += 1
                 end
-                if a == 0
+                if A.p[p+1]-1 == 0
                     println("a = 0")
                 else                    
-                    X.x[line] = b / a
+                    X.x[line] = (b - a) / A.p[p+1]-1 
                 end
             else
                 X.x[line] = 0
